@@ -16,30 +16,28 @@ class IntervalsList extends Command
         $left = $this->option('left');
         $right = $this->option('right');
 
+
         if ($left === null || $right === null) {
             $this->error('Необходимо указать обе границы интервала: --left и --right');
             return;
         }
 
         $intervals = DB::table('intervals')
-            ->where(function ($query) use ($left, $right) {
-                $query->whereBetween('start', [$left, $right])
-                    ->orWhereBetween('end', [$left, $right])
-                    ->orWhere(function ($query) use ($left, $right) {
-                        $query->where('start', '<=', $left)
-                            ->where('end', '>=', $right);
-                    })
-                    ->orWhere(function ($query) use ($left, $right) {
-                        $query->where('start', '<=', $left)
-                            ->whereNull('end');
-                    })
-                    ->orWhere(function ($query) use ($left, $right) {
-                        $query->where('start', '>=', $left)
-                            ->whereNull('end');
-                    });
+            ->where('start', '<=', $right)
+            ->where(function ($query) use ($left) {
+                $query->where('end', '>=', $left)
+                    ->orWhereNull('end');
             })
-            ->get();
+            ->get(['id','start','end'])->map(function ($interval) {
+                return [
+                    'id' => $interval->id,
+                    'start' => $interval->start,
+                    'end' => $interval->end,
+                ];
+            });
 
-        $this->table(['ID', 'Start', 'End'], $intervals);
+        $count = $intervals->count();
+        $this->info("Количество пересечений: $count");
+        $this->table(['id', 'start', 'end'], $intervals);
     }
 }
